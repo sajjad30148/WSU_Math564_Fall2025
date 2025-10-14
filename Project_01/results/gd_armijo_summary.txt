@@ -1,0 +1,16 @@
+optimizer    : gd
+line search  : armijo
+max_iter     : 1000
+gtol         : 1e-06
+c1           : 0.001
+c2           : 0.5
+alpha0       : 1.0
+
+success      : False
+n_iter       : 1000
+n_evals      : 22010
+f_final      : +4.41097748e+02
+|g|_final    : 1.257e+02
+
+x_final:
+[  13.793438  7.388136  0.012429  1745.327762  9199.184421 -1.945344 ]

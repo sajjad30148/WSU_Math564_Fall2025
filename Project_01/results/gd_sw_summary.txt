@@ -1,0 +1,16 @@
+optimizer    : gd
+line search  : strong_wolfe
+max_iter     : 1000
+gtol         : 1e-06
+c1           : 0.001
+c2           : 0.5
+alpha0       : 1.0
+
+success      : False
+n_iter       : 1000
+n_evals      : 21976
+f_final      : +4.40559694e+02
+|g|_final    : 2.620e+02
+
+x_final:
+[  13.792896  7.390559  0.012377  1745.327598  9199.184418 -1.951098 ]

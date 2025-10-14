@@ -1,0 +1,16 @@
+optimizer    : bfgs
+line search  : strong_wolfe
+max_iter     : 1000
+gtol         : 1e-06
+c1           : 0.001
+c2           : 0.5
+alpha0       : 1.0
+
+success      : True
+n_iter       : 31
+n_evals      : 202
+f_final      : +5.83750645e+00
+|g|_final    : 5.033e-08
+
+x_final:
+[  13.782528  8.257336  0.021865  1835.829905  927.148443 -2.036854 ]
