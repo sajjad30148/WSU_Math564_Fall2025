@@ -22,10 +22,15 @@
 import pandas as pd
 import numpy as np
 import os
+from pathlib import Path
+import sys
 
-import functions as fn
 from run_logger import RunLogger
 
+workspace_root = Path(__file__).resolve().parent.parent   
+sys.path.insert(0, str(workspace_root))
+
+import functions as fn 
 
 # ----------------------------------------------------------------
 # User Settings

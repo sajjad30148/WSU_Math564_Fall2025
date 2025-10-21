@@ -638,3 +638,211 @@ def quasi_newton_bfgs(f, grad, x0, line_search, opts = None):
             "success" : success
     }
 
+
+# ----------------------------------------------------------------
+# fast feedforward neural networkjective
+# ----------------------------------------------------------------
+
+def make_ffnn_objective(X, y, layer_sizes, l2 = 0.0):
+    """
+    create closures f(w) and grad(w) for a general ffnn
+
+    inputs
+        X            array (n, d_in), features
+        y            array (n,) or (n, 1), targets in {1/6, ..., 5/6}
+        layer_sizes  list like [d_in, h1, ..., d_out] with d_out = 1
+        l2           nonnegative l2 regularization on weights (biases excluded)
+
+    returns
+        f            callable, f(w) -> scalar loss
+        grad         callable, grad(w) -> flat gradient vector
+    """
+
+    X = np.asarray(X, dtype = float)
+    y = np.asarray(y, dtype = float).reshape(-1, 1)
+
+    n, d_in = X.shape
+    assert layer_sizes[0] == d_in, "input dimension must match layer_sizes[0]"
+    assert layer_sizes[-1] == 1, "output dimension must be 1 for this setup"
+
+    # precompute parameter slices for fast pack/unpack without helpers
+    # for each layer l: W in R^{d_{l-1} x d_l}, b in R^{d_l}
+    shapes = []
+    sizes = []
+    for l in range(1, len(layer_sizes)):
+        d_prev = layer_sizes[l - 1]
+        d_curr = layer_sizes[l]
+        w_count = d_prev * d_curr
+        b_count = d_curr
+        shapes.append(((d_prev, d_curr), (d_curr,)))
+        sizes.append((w_count, b_count))
+
+    # compute flat index ranges
+    idx = 0
+    slices = []
+    for (w_count, b_count) in sizes:
+        sW = slice(idx, idx + w_count)
+        idx += w_count
+        sb = slice(idx, idx + b_count)
+        idx += b_count
+        slices.append((sW, sb))
+    p_expected = idx
+
+    # cached activations for backprop; created locally inside f/grad
+    def _sigmoid(u):
+        return 1.0 / (1.0 + np.exp(-u))
+
+    def f(w):
+        w = np.asarray(w, dtype = float)
+        if w.size != p_expected:
+            raise ValueError("size of w does not match architecture")
+
+        # unpack and forward pass
+        a_list = [X]   # a_0
+        params = []
+        a = X
+        for (sW, sb), (shapeW, shapeb) in zip(slices, shapes):
+            W = w[sW].reshape(shapeW)
+            b = w[sb].reshape(shapeb)
+            params.append((W, b))
+            z = a @ W + b
+            a = _sigmoid(z)
+            a_list.append(a)
+
+        yhat = a_list[-1]                         # (n, 1)
+        residual = yhat - y
+        loss = 0.5 * np.sum(residual * residual)
+
+        if l2 > 0.0:
+            reg = 0.0
+            for (W, b) in params:
+                reg += np.sum(W * W)
+            loss += 0.5 * l2 * reg
+
+        return float(loss)
+
+    def grad(w):
+        w = np.asarray(w, dtype = float)
+        if w.size != p_expected:
+            raise ValueError("size of w does not match architecture")
+
+        # unpack and forward pass (store activations for backprop)
+        a_list = [X]
+        z_list = []
+        params = []
+        a = X
+        for (sW, sb), (shapeW, shapeb) in zip(slices, shapes):
+            W = w[sW].reshape(shapeW)
+            b = w[sb].reshape(shapeb)
+            params.append((W, b))
+            z = a @ W + b
+            a = _sigmoid(z)
+            z_list.append(z)
+            a_list.append(a)
+
+        yhat = a_list[-1]
+
+        # initial delta at output: (yhat - y) * sigma'(z_L)
+        # derivative of sigmoid via activation: a * (1 - a)
+        delta = (yhat - y) * (yhat * (1.0 - yhat))   # (n, 1)
+
+        # backprop
+        dWs = [None] * len(params)
+        dbs = [None] * len(params)
+
+        for l in reversed(range(len(params))):
+            a_prev = a_list[l]                       # (n, d_l)
+            W, b = params[l]                         # W: (d_l, d_{l+1}), b: (d_{l+1},)
+
+            dW = a_prev.T @ delta                    # (d_l, d_{l+1})
+            db = np.sum(delta, axis = 0)             # (d_{l+1},)
+            if l2 > 0.0:
+                dW += l2 * W
+
+            dWs[l] = dW
+            dbs[l] = db
+
+            if l > 0:
+                a_prev_act = a_list[l]               # activation at layer l
+                delta = (delta @ W.T) * (a_prev_act * (1.0 - a_prev_act))
+
+        # pack grads into a flat vector following the same order
+        g = np.empty(p_expected, dtype = float)
+        for (sW, sb), dW, db in zip(slices, dWs, dbs):
+            g[sW] = dW.ravel()
+            g[sb] = db.ravel()
+
+        return g
+
+    return f, grad
+
+
+def ffnn_init_params(layer_sizes, random_state = None):
+    """
+    xavier/glorot uniform initializer for sigmoid networks
+
+    inputs
+        layer_sizes   [d_in, h1, ..., d_out]
+        random_state  seed or numpy random generator or None
+
+    returns
+        w0            flat parameter vector
+    """
+    if random_state is None:
+        random_state = np.random.default_rng(42)
+
+    blocks = []
+    for l in range(1, len(layer_sizes)):
+        d_prev = layer_sizes[l - 1]
+        d_curr = layer_sizes[l]
+        limit = np.sqrt(6.0 / (d_prev + d_curr))
+        W = random_state.uniform(-limit, limit, size = (d_prev, d_curr))
+        b = np.zeros((d_curr,), dtype = float)
+        blocks.append(W.ravel())
+        blocks.append(b)
+    return np.concatenate(blocks, axis = 0)
+
+
+
+
+# ----------------------------------------------------------------
+# Miscellaneous functions
+# ----------------------------------------------------------------
+
+# stratified train-test split for dataframes
+def stratified_split_df(df, target_col, test_size = 0.3, random_state = 42):
+    """
+    stratified split by discrete target values
+
+    inputs
+        df           dataframe to split
+        target_col   column with class labels (here: original 1..5 happiness)
+        test_size    fraction in test
+        random_state seed for reproducibility
+
+    outputs
+        df_train, df_test
+    """
+    rng = np.random.default_rng(random_state)
+
+    df_train_parts = []
+    df_test_parts  = []
+
+    for cls, grp in df.groupby(target_col):
+        n = len(grp)
+        n_test = int(round(test_size * n))
+        n_test = max(1, min(n_test, n - 1))  # at least 1 in each side when possible
+
+        idx = np.arange(n)
+        rng.shuffle(idx)
+
+        test_idx = idx[:n_test]
+        train_idx = idx[n_test:]
+
+        df_test_parts.append(grp.iloc[test_idx])
+        df_train_parts.append(grp.iloc[train_idx])
+
+    df_train = pd.concat(df_train_parts, axis = 0).sample(frac = 1.0, random_state = random_state).reset_index(drop = True)
+    df_test  = pd.concat(df_test_parts,  axis = 0).sample(frac = 1.0, random_state = random_state).reset_index(drop = True)
+
+    return df_train, df_test

@@ -1,0 +1,18 @@
+confusion matrix: bfgs + strong wolfe
+Predicted  1   2   3    4   5
+True                         
+1          1   2   3   12   2
+2          2   2   6   25   3
+3          2  11  12  163  14
+4          3  13  16  475  37
+5          6   6   6  211  55
+
+confusion matrix: gradient descent + strong wolfe
+Predicted  1  2   3    4  5
+True                       
+1          0  3   4   13  0
+2          0  0  11   27  0
+3          0  0  24  178  0
+4          0  0  21  523  0
+5          0  0   7  277  0
+
