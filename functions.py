@@ -665,7 +665,7 @@ def make_ffnn_objective(X, y, layer_sizes, l2 = 0.0):
     assert layer_sizes[0] == d_in, "input dimension must match layer_sizes[0]"
     assert layer_sizes[-1] == 1, "output dimension must be 1 for this setup"
 
-    # precompute parameter slices for fast pack/unpack without helpers
+    # precompute parameter slices 
     # for each layer l: W in R^{d_{l-1} x d_l}, b in R^{d_l}
     shapes = []
     sizes = []

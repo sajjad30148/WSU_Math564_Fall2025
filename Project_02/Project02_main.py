@@ -1,5 +1,5 @@
 # ================================================================
-#
+# Project 02 Main Script
 # ================================================================
 
 import os
@@ -345,7 +345,10 @@ if __name__ == "__main__":
     ycls_gd   = decode_to_class(yhat_gd)
     ytrue_cls = decode_to_class(y_test)
 
-    # confusion matrices
+    # ------------------------------------------------------------
+    # Confusion matrix
+    # ------------------------------------------------------------
+
     cm_bfgs = pd.crosstab(
         pd.Series(ytrue_cls.flatten(), name = "True"),
         pd.Series(ycls_bfgs.flatten(), name = "Predicted"),
@@ -360,40 +363,23 @@ if __name__ == "__main__":
     print("\nConfusion Matrix: Gradient Descent + Strong Wolfe")
     print(cm_gd)
 
+    classes = [1, 2, 3, 4, 5]
+
+    # reindex to full 1...5 grid for neat printing/saving
+    cm_bfgs = cm_bfgs.reindex(index = classes, columns = classes, fill_value = 0)
+    cm_gd   = cm_gd.reindex(index = classes, columns = classes, fill_value = 0)
+
+
     # ------------------------------------------------------------
-# accuracy (printed) and class mae (computed, saved)
-# ------------------------------------------------------------
-classes = [1, 2, 3, 4, 5]
+    # save to ./results/evaluation.txt
+    # ------------------------------------------------------------
+    results_dir = Path(__file__).resolve().parent / "results"
+    results_dir.mkdir(parents = True, exist_ok = True)
+    with open(os.path.join(results_dir, "evaluation.txt"), "w") as f:
+        f.write("confusion matrix: bfgs + strong wolfe\n")
+        f.write(str(cm_bfgs) + "\n\n")
+        f.write("confusion matrix: gradient descent + strong wolfe\n")
 
-# reindex to full 1..5 grid for neat printing/saving
-cm_bfgs = cm_bfgs.reindex(index = classes, columns = classes, fill_value = 0)
-cm_gd   = cm_gd.reindex(index = classes, columns = classes, fill_value = 0)
-
-acc_bfgs = float((ycls_bfgs == ytrue_cls).mean())
-acc_gd   = float((ycls_gd   == ytrue_cls).mean())
-
-# class-level mae (not printed per your request, but saved)
-mae_bfgs = float(np.abs(ytrue_cls - ycls_bfgs).mean())
-mae_gd   = float(np.abs(ytrue_cls - ycls_gd).mean())
-
-print(f"\naccuracy: bfgs + strong wolfe = {acc_bfgs:.6f}")
-print(f"accuracy: gradient descent + strong wolfe = {acc_gd:.6f}")
-
-# ------------------------------------------------------------
-# save to ./results/evaluation.txt
-# ------------------------------------------------------------
-results_dir = Path(__file__).resolve().parent / "results"
-results_dir.mkdir(parents = True, exist_ok = True)
-with open(os.path.join(results_dir, "evaluation.txt"), "w") as f:
-    f.write("confusion matrix: bfgs + strong wolfe\n")
-    f.write(str(cm_bfgs) + "\n\n")
-    f.write("confusion matrix: gradient descent + strong wolfe\n")
-    f.write(str(cm_gd) + "\n\n")
-    f.write(f"accuracy (bfgs + strong wolfe)         : {acc_bfgs:.6f}\n")
-    f.write(f"accuracy (gradient descent + wolfe)    : {acc_gd:.6f}\n")
-    f.write(f"class mae (bfgs + strong wolfe)        : {mae_bfgs:.6f}\n")
-    f.write(f"class mae (gradient descent + wolfe)   : {mae_gd:.6f}\n")
-
-print("saved confusion matrices, accuracies, and class mae to ./results/evaluation.txt")
+    print("saved confusion matrices to ./results/evaluation.txt")
 
 # ================================================================
