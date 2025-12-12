@@ -87,6 +87,7 @@ def build_transmission_qp(polygons, z0, z9, beta, alpha):
     
     Returns: G, c, A, b, Ae, be
     """
+    # Number of variables
     n_vars = 16  # 8 points × 2 coordinates
     
     # Initialize matrices
@@ -704,7 +705,7 @@ if __name__ == "__main__":
 
     # Create results folder in same directory as script
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    results_dir = os.path.join(script_dir, "results-p3")
+    results_dir = os.path.join(script_dir, "Results")
     os.makedirs(results_dir, exist_ok=True)
     os.chdir(results_dir)
     

@@ -114,6 +114,10 @@ def prepare_happiness_data(
     ward_medians = {}
     for col in feature_cols:
         ward_medians[col] = df.groupby(ward_col)[col].median()
+    
+    # count ward medians that are not equal to Likert value 4
+    # (drop NA entries for wards without data for the column)
+    ward_medians_not4_counts = {col: int(ward_medians[col].dropna().ne(4).sum()) for col in feature_cols}
 
     # global medians
     global_medians = {col: float(df[col].median()) for col in feature_cols}
@@ -171,6 +175,7 @@ def prepare_happiness_data(
         "ward_medians_available_for_cols" : {
             col: int(ward_medians[col].notna().sum()) for col in feature_cols
         },
+        "ward_medians_not4_counts" : ward_medians_not4_counts,
         "global_medians" : global_medians,
         "scaling" : "(x - 1) / 4 with clamp to [1, 5]",
         "target_encoding" : "Happiness_Encoded = Happiness / 6",
@@ -213,6 +218,9 @@ if __name__ == "__main__":
     print("rows initial            :", prep_info["n_rows_initial"])
     print("rows dropped (target)   :", prep_info["n_missing_target_dropped"])
     print("rows dropped (>= missing threshold) :", prep_info["n_drop_too_many_missing"])
+    print("\nWard-level medians not equal to 4 (per feature):")
+    for col, count in prep_info["ward_medians_not4_counts"].items():
+        print(f"  {col} : {count}")
 
     # ------------------------------------------------------------
     # train/test split
